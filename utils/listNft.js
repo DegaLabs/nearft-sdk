@@ -23,6 +23,82 @@ async function getInfoNft(networkId, contractTokenId, accountId) {
   }
 }
 
+async function getOwnedNFTMetadata(networkId, contractTokenId, accountId) {
+  const arr = []
+  try {
+    const account = await nearAccount.getReadOnlyAccount(networkId, accountId)
+    const nftMetadata = await account.viewFunction({ contractId: contractTokenId, methodName: 'nft_metadata', args: {} })
+    nftMetadata.tokenId = contractTokenId
+    const contract = new nearAPI.Contract(
+      account, // the account object that is connecting
+      contractTokenId,
+      {
+        // name of contract you're connecting to
+        viewMethods: ['nft_tokens_for_owner'], // view methods do not change state but usually return a value
+        account // account object to initialize and sign transactions.
+      }
+    )
+    const arrayNft = await contract.nft_tokens_for_owner({ account_id: accountId })
+    console.log(arrayNft, networkId, contractTokenId, accountId)
+    const nft = contractTokenId
+    const readTokenMetadata = async (e) => {
+      let data = {}
+      data = {
+        tokenId: e.token_id,
+        contractId: nft,
+        owner_id: e.owner_id,
+        ownerId: e.owner_id,
+        nftIcon: nftMetadata.icon
+      }
+      if (nftMetadata.base_uri) {
+        const tokenUri = `${nftMetadata.base_uri}/${e.metadata.reference}`
+        console.log('tokenUri', tokenUri)
+        let jsonData = await axios.get(tokenUri)
+        jsonData = jsonData.data
+        console.log('jsonData', jsonData, data.tokenId)
+        data.metadata = jsonData
+      } else {
+        data.metadata = e.metadata
+      }
+      // data.icon = data.metadata.media
+      if (data.metadata.media) {
+        data.icon = data.metadata.media
+      } else if (data.metadata.animation_url) {
+        data.icon = data.metadata.animation_url
+      } else if (e.metadata && e.metadata.media) {
+        data.icon = `https://cloudflare-ipfs.com/ipfs/${e.metadata.media}`
+      }
+      const { icon } = data
+      if (icon?.includes('data:image/svg+xml,') || icon?.includes('data:image/svg+xml;charset=UTF-8')) {
+        let _icon = icon.slice(19)
+        data.isSvgXml = true
+        data.icon = decodeURIComponent(_icon)
+      } else if (icon?.includes('data:image/svg+xml;base64,')) {
+        let _icon = icon.slice(26)
+        data.icon = atob(_icon)
+        data.isSvgXml = true
+      } else {
+        // data.icon = null
+        data.timestamp = Date.now()
+      }
+      if (!data.metadata.title) {
+        data.metadata.title = e.metadata.title
+      }
+      return data
+    }
+    promises = []
+    for (const e of arrayNft) {
+      promises.push(readTokenMetadata(e))
+    }
+    const data = await Promise.all(promises)
+    arr.push(data)
+    return arr[0]
+  } catch (e) {
+    console.error(e)
+    return []
+  }
+}
+
 async function fetchNftList(networkId, address, force = false) {
   let allTokens = []
   try {
@@ -136,5 +212,6 @@ async function getNFTList(networkId, accountId) {
 }
 
 module.exports = {
-  getNFTList
+  getNFTList,
+  getOwnedNFTMetadata
 }

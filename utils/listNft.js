@@ -122,19 +122,20 @@ async function fetchNftList(networkId, address, force = false) {
   return allTokens
 }
 
-async function getNFTList(networkId, contractId, accountId) {
-  const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
-  let pools = await readAccount.viewFunction({
-    contractId: contractId,
-    methodName: "get_pools",
-    args: {
-    }
-  })
+async function getNFTList(networkId, accountId, contractId = null) {
   let nftPrices = {}
-  for (let i = 0; i < pools.length; i++) {
-    nftPrices[pools[i].nft_token] = pools[i].spot_price
+  if (contractId !== null) {
+    const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
+    let pools = await readAccount.viewFunction({
+      contractId: contractId,
+      methodName: "get_pools",
+      args: {}
+    })
+    for (let i = 0; i < pools.length; i++) {
+      nftPrices[pools[i].nft_token] = pools[i].spot_price
+    }
   }
-  
+
   try {
     const nftList = await fetchNftList(networkId, accountId)
     if (!nftList) {

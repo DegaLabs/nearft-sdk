@@ -122,7 +122,19 @@ async function fetchNftList(networkId, address, force = false) {
   return allTokens
 }
 
-async function getNFTList(networkId, accountId) {
+async function getNFTList(networkId, contractId, accountId) {
+  const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
+  let pools = await readAccount.viewFunction({
+    contractId: contractId,
+    methodName: "get_pools",
+    args: {
+    }
+  })
+  let nftPrices = {}
+  for (let i = 0; i < pools.length; i++) {
+    nftPrices[pools[i].nft_token] = pools[i].spot_price
+  }
+  
   try {
     const nftList = await fetchNftList(networkId, accountId)
     if (!nftList) {
@@ -152,20 +164,24 @@ async function getNFTList(networkId, accountId) {
       }
       const nft = nftList[i]
       const readTokenMetadata = async (e) => {
+
+        let price = ''
+        if (nftPrices.hasOwnProperty(nftList[i])) {
+          price = nftPrices[nftList[i]]
+        }
         let data = {}
         data = {
           tokenId: e.token_id,
           contractId: nftList[i],
           owner_id: e.owner_id,
           ownerId: e.owner_id,
-          nftIcon: nftMetadataList[nft].icon
+          nftIcon: nftMetadataList[nft].icon,
+          price
         }
         if (nftMetadataList[nft].base_uri) {
           const tokenUri = `${nftMetadataList[nft].base_uri}/${e.metadata.reference}`
-          console.log('tokenUri', tokenUri)
           let jsonData = await axios.get(tokenUri)
           jsonData = jsonData.data
-          console.log('jsonData', jsonData, data.tokenId)
           data.metadata = jsonData
         } else {
           data.metadata = e.metadata

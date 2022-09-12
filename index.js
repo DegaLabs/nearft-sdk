@@ -1,7 +1,7 @@
 const BigNumber = require('bignumber.js')
 const nearAccount = require("./nearAccount")
 const listNFT = require('./utils/listNft')
-const HELP = {
+const SDK = {
     getPools: async (networkId, contractId) => {
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
         const ret = await readAccount.viewFunction({
@@ -73,4 +73,4 @@ const HELP = {
     }
 }
 
-module.exports = HELP
+module.exports = SDK

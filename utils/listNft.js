@@ -39,7 +39,7 @@ async function getOwnedNFTMetadata(networkId, contractTokenId, accountId) {
       }
     )
     const arrayNft = await contract.nft_tokens_for_owner({ account_id: accountId })
-    console.log(arrayNft, networkId, contractTokenId, accountId)
+    // console.log(arrayNft, networkId, contractTokenId, accountId)
     const nft = contractTokenId
     const readTokenMetadata = async (e) => {
       let data = {}
@@ -52,10 +52,10 @@ async function getOwnedNFTMetadata(networkId, contractTokenId, accountId) {
       }
       if (nftMetadata.base_uri) {
         const tokenUri = `${nftMetadata.base_uri}/${e.metadata.reference}`
-        console.log('tokenUri', tokenUri)
+        // console.log('tokenUri', tokenUri)
         let jsonData = await axios.get(tokenUri)
         jsonData = jsonData.data
-        console.log('jsonData', jsonData, data.tokenId)
+        // console.log('jsonData', jsonData, data.tokenId)
         data.metadata = jsonData
       } else {
         data.metadata = e.metadata

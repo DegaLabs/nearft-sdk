@@ -57,6 +57,7 @@ const SDK = {
     },
     getMetadataOfNFT: listNFT.getMetadataOfNFT,
     getNFTData: listNFT.getNFTList,
+    getListMyCollection: listNFT.fetchNftList,
     getBuyInfo: async ({ networkId, contractId, poolId, numItems, pools }) => {
         if (poolId === undefined) {
             const pool = pools.find(e => e.nft_token == nftContractId)
@@ -254,7 +255,7 @@ const SDK = {
                 throw err;
             });
     },
-    createPair: async (walletSelector, networkId, contractId, accountId, poolType, bondingCurve, assetId, spotPrice, delta, fee, assetRecipient, initialTokenIds, lookTil, depositAmount) => {
+    createPair: async (walletSelector, networkId, contractId, accountId, poolType, bondingCurve, spotPrice, delta, fee, assetRecipient, initialTokenIds, lookTil, depositAmount) => {
         const wallet = await walletSelector.wallet()
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
         let { transactions } = await checkStorageDepositAndMakeTx(readAccount, contractId, accountId)
@@ -271,7 +272,7 @@ const SDK = {
                                 {
                                     pool_type: poolType,
                                     bonding_curve: bondingCurve,
-                                    asset_id: assetId,
+                                    asset_id: contractId,
                                     spot_price: spotPrice,
                                     delta: delta,
                                     fee: fee,

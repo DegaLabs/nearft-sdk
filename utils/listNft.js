@@ -99,11 +99,11 @@ async function getOwnedNFTMetadata(networkId, contractTokenId, accountId) {
   }
 }
 
-async function fetchNftList(networkId, address, force = false) {
+async function fetchNftList(networkId, accountId) {
   let allTokens = []
   try {
     const response = await fetch(
-      `${networkConfig[networkId].kitwalletApi}/account/${address}/likelyNFTs`,
+      `${networkConfig[networkId].kitwalletApi}/account/${accountId}/likelyNFTs`,
       {
         headers: {
           origin: `${networkConfig[networkId].config.walletUrl}`,
@@ -373,5 +373,6 @@ module.exports = {
   getNFTList,
   getOwnedNFTMetadata,
   getMetadataOfNFT,
-  isTokenDepositedBy
+  isTokenDepositedBy,
+  fetchNftList
 }

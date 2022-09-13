@@ -162,6 +162,134 @@ const SDK = {
 
                 throw err;
             });
+    },
+    createPair: async (walletSelector, contractId, accountId, poolType, bondingCurve, assetId, spotPrice, delta, fee, assetRecipient, initialTokenIds, lookTil, depositAmount) => {
+        const wallet = await walletSelector.wallet()
+        return wallet.signAndSendTransaction({
+            signerId: accountId,
+            receiverId: contractId,
+            actions: [
+                {
+                    type: "FunctionCall",
+                    params: {
+                        methodName: "create_pair",
+                        args: {
+                            actions: [
+                                {
+                                    pool_type: poolType,
+                                    bonding_curve: bondingCurve,
+                                    asset_id: assetId,
+                                    spot_price: spotPrice,
+                                    delta: delta,
+                                    fee: fee,
+                                    asset_recipient: assetRecipient,
+
+                                    initial_token_ids: initialTokenIds,
+                                    locked_til: lookTil
+                                }
+                            ]
+                        },
+                        gas: 300000000000000,
+                        deposit: depositAmount,
+                    },
+                },
+            ],
+        })
+          .catch((err) => {
+              console.log("Failed to swap");
+
+              throw err;
+          })
+    },
+    depositToPool: async (walletSelector, contractId, accountId, poolId, tokenIds, depositAmount) => {
+        const wallet = await walletSelector.wallet()
+        return wallet.signAndSendTransaction({
+            signerId: accountId,
+            receiverId: contractId,
+            actions: [
+                {
+                    type: "FunctionCall",
+                    params: {
+                        methodName: "deposit_to_pool",
+                        args: {
+                            actions: [
+                                {
+                                    pool_id: poolId,
+                                    token_ids: tokenIds,
+                                }
+                            ]
+                        },
+                        gas: 300000000000000,
+                        deposit: depositAmount,
+                    },
+                },
+            ],
+        })
+          .catch((err) => {
+              console.log("Failed to swap");
+
+              throw err;
+          })
+    },
+    withdrawNear: async (walletSelector, contractId, accountId, poolId, nearAmount) => {
+        const wallet = await walletSelector.wallet()
+        return wallet.signAndSendTransaction({
+            signerId: accountId,
+            receiverId: contractId,
+            actions: [
+                {
+                    type: "FunctionCall",
+                    params: {
+                        methodName: "withdraw_near",
+                        args: {
+                            actions: [
+                                {
+                                    pool_id: poolId,
+                                    near_amount: nearAmount,
+                                }
+                            ]
+                        },
+                        gas: 300000000000000,
+                        deposit: '100000000000000000000000',
+                    },
+                },
+            ],
+        })
+          .catch((err) => {
+              console.log("Failed to swap");
+
+              throw err;
+          })
+    },
+    withdrawNfts: async (walletSelector, contractId, accountId, poolId, tokenIds) => {
+        const wallet = await walletSelector.wallet()
+        return wallet.signAndSendTransaction({
+            signerId: accountId,
+            receiverId: contractId,
+            actions: [
+                {
+                    type: "FunctionCall",
+                    params: {
+                        methodName: "withdraw_nfts",
+                        args: {
+                            actions: [
+                                {
+                                    pool_id: poolId,
+                                    token_ids: tokenIds,
+                                }
+                            ]
+                        },
+                        gas: 300000000000000,
+                        deposit: '100000000000000000000000',
+                    },
+                },
+            ],
+        })
+          .catch((err) => {
+              console.log("Failed to swap");
+
+              throw err;
+          })
     }
 }
 

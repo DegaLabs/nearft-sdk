@@ -374,5 +374,6 @@ module.exports = {
   getOwnedNFTMetadata,
   getMetadataOfNFT,
   isTokenDepositedBy,
-  fetchNftList
+  fetchNftList,
+  getInfoNft
 }

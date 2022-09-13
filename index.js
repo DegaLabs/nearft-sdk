@@ -57,7 +57,53 @@ const SDK = {
     },
     getMetadataOfNFT: listNFT.getMetadataOfNFT,
     getNFTData: listNFT.getNFTList,
-    getListMyCollection: listNFT.fetchNftList,
+    getListMyCollection: async (networkId, ammContractId, accountId) => {
+        const nftList = await listNFT.fetchNftList(networkId, accountId)
+        if (!nftList) {
+            nftList = []
+        }
+        let deposits = {}
+        const readAccount = await nearAccount.getReadOnlyAccount(networkId, accountId)
+        let validList = []
+        try {
+            let deposits = await readAccount.viewFunction({
+                contractId: ammContractId,
+                methodName: "get_deposits",
+                args: {
+                    account_id: accountId,
+                }
+            })
+            deposits = deposits.deposits
+            console.log('deposits', deposits)
+            validList = Object.keys(deposits).filter(e => deposits[e].length > 0)
+            console.log('deposits validList', validList)
+        } catch (e) {
+            console.error(e.toString())
+        }
+
+        const promises = []
+        const validTokens = {}
+        const getTokens = async (nft) => {
+            const tokenList = await listNFT.getInfoNft(networkId, nft, accountId)
+            if (tokenList.length > 0) {
+                validTokens[nft] = true
+            }
+        }
+        for (const nft of nftList) {
+            promises.push(getTokens(nft))
+        }
+
+        await Promise.all(promises)
+
+        nftContractIdsDepositList = Object.keys(deposits)
+        for (const n of validList) {
+            validTokens[n] = true
+        }
+        console.log('validTokens', validTokens)
+        console.log('validList', validList, accountId)
+
+        return Object.keys(validTokens)
+    },
     getBuyInfo: async ({ networkId, contractId, poolId, numItems, pools }) => {
         if (poolId === undefined) {
             const pool = pools.find(e => e.nft_token == nftContractId)
@@ -265,8 +311,8 @@ const SDK = {
         if (!depositedTokenIds) {
             depositedTokenIds = []
         }
-
-        let tokenIdsToDeposit = tokenIds.filter(e => !depositedTokenIds.includes(e))
+        console.log('initialTokenIds', initialTokenIds)
+        let tokenIdsToDeposit = initialTokenIds.filter(e => !depositedTokenIds.includes(e))
 
         let depositActions = []
         for (const tokenId of tokenIdsToDeposit) {
@@ -300,20 +346,15 @@ const SDK = {
                     params: {
                         methodName: "create_pair",
                         args: {
-                            actions: [
-                                {
-                                    pool_type: poolType,
-                                    bonding_curve: bondingCurve,
-                                    asset_id: contractId,
-                                    spot_price: spotPrice,
-                                    delta: delta,
-                                    fee: fee,
-                                    asset_recipient: assetRecipient,
-
-                                    initial_token_ids: initialTokenIds,
-                                    locked_til: lookTil
-                                }
-                            ]
+                            pool_type: poolType,
+                            bonding_curve: bondingCurve,
+                            asset_id: contractId,
+                            spot_price: spotPrice,
+                            delta: delta,
+                            fee: fee,
+                            asset_recipient: poolType == 2? null : assetRecipient,
+                            initial_token_ids: initialTokenIds,
+                            locked_til: lookTil
                         },
                         gas: 300000000000000,
                         deposit: depositAmount,

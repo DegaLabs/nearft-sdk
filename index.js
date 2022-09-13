@@ -255,13 +255,45 @@ const SDK = {
                 throw err;
             });
     },
-    createPair: async (walletSelector, networkId, contractId, accountId, poolType, bondingCurve, spotPrice, delta, fee, assetRecipient, initialTokenIds, lookTil, depositAmount) => {
+    createPair: async (walletSelector, networkId, ammContractId, contractId, accountId, poolType, bondingCurve, spotPrice, delta, fee, assetRecipient, initialTokenIds, lookTil, depositAmount) => {
         const wallet = await walletSelector.wallet()
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
-        let { transactions } = await checkStorageDepositAndMakeTx(readAccount, contractId, accountId)
+        let { transactions, deposits } = await checkStorageDepositAndMakeTx(readAccount, contractId, accountId)
+
+        deposits = deposits.deposits ? deposits.deposits : {}
+        let depositedTokenIds = deposits[contractId]
+        if (!depositedTokenIds) {
+            depositedTokenIds = []
+        }
+
+        let tokenIdsToDeposit = tokenIds.filter(e => !depositedTokenIds.includes(e))
+
+        let depositActions = []
+        for (const tokenId of tokenIdsToDeposit) {
+            depositActions.push({
+                type: "FunctionCall",
+                params: {
+                    methodName: "nft_transfer_call",
+                    args: {
+                        receiver_id: ammContractId,
+                        token_id: tokenId,
+                        msg: ''
+                    },
+                    gas: 100000000000000,
+                    deposit: "1"
+                }
+            })
+        }
+        let depositTransaction = {
+            receiverId: contractId,
+            actions: depositActions
+        }
+
+        transactions.push(depositTransaction)
+
         transactions.push({
             signerId: accountId,
-            receiverId: contractId,
+            receiverId: ammContractId,
             actions: [
                 {
                     type: "FunctionCall",
@@ -294,8 +326,7 @@ const SDK = {
             transactions
         })
             .catch((err) => {
-                console.log("Failed to swap");
-
+                console.log("Failed to create pair");
                 throw err;
             })
     },

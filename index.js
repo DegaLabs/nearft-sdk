@@ -322,7 +322,7 @@ const SDK = {
             ],
         })
 
-        return wallet.requestSignTransactions({
+        return wallet.signAndSendTransactions({
             transactions
         })
             .catch((err) => {
@@ -357,7 +357,7 @@ const SDK = {
             ],
         })
 
-        return wallet.requestSignTransactions({
+        return wallet.signAndSendTransactions({
             transactions
         })
             .catch((err) => {
@@ -393,7 +393,7 @@ const SDK = {
             ],
         })
 
-        return wallet.requestSignTransactions({
+        return wallet.signAndSendTransactions({
             transactions
         })
             .catch((err) => {
@@ -429,7 +429,7 @@ const SDK = {
             ],
         })
 
-        return wallet.requestSignTransactions({
+        return wallet.signAndSendTransactions({
             transactions
         })
             .catch((err) => {

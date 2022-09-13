@@ -55,72 +55,7 @@ const SDK = {
         }
         return ret
     },
-    getMetadataOfNFT: async (networkId, contractId, tokenId) => {
-        try {
-            const account = await nearAccount.getReadOnlyAccount(networkId, contractId)
-            const nftMetadata = await account.viewFunction({ contractId: contractId, methodName: 'nft_metadata', args: {} })
-            nftMetadata.tokenId = contractId
-            const contract = new nearAPI.Contract(
-                account, // the account object that is connecting
-                contractId,
-                {
-                    // name of contract you're connecting to
-                    viewMethods: ['nft_token'], // view methods do not change state but usually return a value
-                    account // account object to initialize and sign transactions.
-                }
-            )
-            const e = await contract.nft_token({ token_id: tokenId })
-            if (!e) return null
-            // console.log(arrayNft, networkId, contractId, accountId)
-            const nft = contractId
-            let data = {}
-            data = {
-                tokenId: e.token_id,
-                contractId: nft,
-                owner_id: e.owner_id,
-                ownerId: e.owner_id,
-                nftIcon: nftMetadata.icon
-            }
-            if (nftMetadata.base_uri) {
-                const tokenUri = `${nftMetadata.base_uri}/${e.metadata.reference}`
-                // console.log('tokenUri', tokenUri)
-                let jsonData = await axios.get(tokenUri)
-                jsonData = jsonData.data
-                // console.log('jsonData', jsonData, data.tokenId)
-                data.metadata = jsonData
-            } else {
-                data.metadata = e.metadata
-            }
-            // data.icon = data.metadata.media
-            if (data.metadata.media) {
-                data.icon = data.metadata.media
-            } else if (data.metadata.animation_url) {
-                data.icon = data.metadata.animation_url
-            } else if (e.metadata && e.metadata.media) {
-                data.icon = `https://cloudflare-ipfs.com/ipfs/${e.metadata.media}`
-            }
-            const { icon } = data
-            if (icon?.includes('data:image/svg+xml,') || icon?.includes('data:image/svg+xml;charset=UTF-8')) {
-                let _icon = icon.slice(19)
-                data.isSvgXml = true
-                data.icon = decodeURIComponent(_icon)
-            } else if (icon?.includes('data:image/svg+xml;base64,')) {
-                let _icon = icon.slice(26)
-                data.icon = atob(_icon)
-                data.isSvgXml = true
-            } else {
-                // data.icon = null
-                data.timestamp = Date.now()
-            }
-            if (!data.metadata.title) {
-                data.metadata.title = e.metadata.title
-            }
-            return data
-        } catch (e) {
-            console.error(e)
-        }
-        return null
-    },
+    getMetadataOfNFT: listNFT.getMetadataOfNFT,
     getNFTData: listNFT.getNFTList,
     getBuyInfo: async ({ networkId, contractId, poolId, numItems, pools }) => {
         if (poolId === undefined) {
@@ -470,7 +405,8 @@ const SDK = {
 
                 throw err;
             })
-    }
+    },
+    isTokenDepositedBy: listNFT.isTokenDepositedBy
 }
 
 module.exports = SDK

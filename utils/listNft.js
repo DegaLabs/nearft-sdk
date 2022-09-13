@@ -122,8 +122,99 @@ async function fetchNftList(networkId, address, force = false) {
   return allTokens
 }
 
+async function isTokenDepositedBy(networkId, ammContractId, tokenContractId, accountId, tokenId) {
+  const readAccount = await nearAccount.getReadOnlyAccount(networkId, ammContractId)
+  try {
+    let deposits = await readAccount.viewFunction({
+      contractId: ammContractId,
+      methodName: "get_deposits",
+      args: {
+        account_id: accountId,
+      }
+    })
+    console.log('deposits', deposits)
+    deposits = deposits.deposits
+    if (deposits && deposits[tokenContractId]) {
+      if (deposits[tokenContractId].includes(tokenId)) {
+        return true
+      }
+    }
+  } catch (e) {
+    console.error(e.toString())
+  }
+  return false
+}
+
+async function getMetadataOfNFT(networkId, contractId, tokenId) {
+  try {
+    const account = await nearAccount.getReadOnlyAccount(networkId, contractId)
+    const nftMetadata = await account.viewFunction({ contractId: contractId, methodName: 'nft_metadata', args: {} })
+    nftMetadata.tokenId = contractId
+    const contract = new nearAPI.Contract(
+      account, // the account object that is connecting
+      contractId,
+      {
+        // name of contract you're connecting to
+        viewMethods: ['nft_token'], // view methods do not change state but usually return a value
+        account // account object to initialize and sign transactions.
+      }
+    )
+    const e = await contract.nft_token({ token_id: tokenId })
+    if (!e) return null
+    // console.log(arrayNft, networkId, contractId, accountId)
+    const nft = contractId
+    let data = {}
+    data = {
+      tokenId: e.token_id,
+      contractId: nft,
+      owner_id: e.owner_id,
+      ownerId: e.owner_id,
+      nftIcon: nftMetadata.icon
+    }
+    if (nftMetadata.base_uri) {
+      const tokenUri = `${nftMetadata.base_uri}/${e.metadata.reference}`
+      // console.log('tokenUri', tokenUri)
+      let jsonData = await axios.get(tokenUri)
+      jsonData = jsonData.data
+      // console.log('jsonData', jsonData, data.tokenId)
+      data.metadata = jsonData
+    } else {
+      data.metadata = e.metadata
+    }
+    // data.icon = data.metadata.media
+    if (data.metadata.media) {
+      data.icon = data.metadata.media
+    } else if (data.metadata.animation_url) {
+      data.icon = data.metadata.animation_url
+    } else if (e.metadata && e.metadata.media) {
+      data.icon = `https://cloudflare-ipfs.com/ipfs/${e.metadata.media}`
+    }
+    const { icon } = data
+    if (icon?.includes('data:image/svg+xml,') || icon?.includes('data:image/svg+xml;charset=UTF-8')) {
+      let _icon = icon.slice(19)
+      data.isSvgXml = true
+      data.icon = decodeURIComponent(_icon)
+    } else if (icon?.includes('data:image/svg+xml;base64,')) {
+      let _icon = icon.slice(26)
+      data.icon = atob(_icon)
+      data.isSvgXml = true
+    } else {
+      // data.icon = null
+      data.timestamp = Date.now()
+    }
+    if (!data.metadata.title) {
+      data.metadata.title = e.metadata.title
+    }
+    return data
+  } catch (e) {
+    console.error(e)
+  }
+  return null
+}
+
 async function getNFTList(networkId, accountId, contractId = null) {
   let nftPrices = {}
+  let deposits = {}
   if (contractId !== null) {
     const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
     let pools = await readAccount.viewFunction({
@@ -134,13 +225,39 @@ async function getNFTList(networkId, accountId, contractId = null) {
     for (let i = 0; i < pools.length; i++) {
       nftPrices[pools[i].nft_token] = pools[i].spot_price
     }
+
+    try {
+      deposits = await readAccount.viewFunction({
+        contractId: contractId,
+        methodName: "get_deposits",
+        args: {
+          account_id: accountId,
+        }
+      })
+      deposits = deposits.deposits
+    } catch (e) {
+
+    }
   }
 
   try {
     const nftList = await fetchNftList(networkId, accountId)
     if (!nftList) {
+      nftList = []
+    }
+
+    let nftContractIdsDepositList = Object.keys(deposits)
+    console.log('deposits', nftContractIdsDepositList)
+    for (const n of nftContractIdsDepositList) {
+      if (!nftList.includes(n)) {
+        nftList.push(n)
+      }
+    }
+    console.log('nftList', nftList)
+    if (nftList.length == 0) {
       return []
     }
+
     const accountInstance = await nearAccount.getReadOnlyAccount(networkId, accountId)
     const nftMetadataList = {}
     let promises = []
@@ -160,12 +277,35 @@ async function getNFTList(networkId, accountId, contractId = null) {
     const arr = []
     for (let i = 0; i < nftList.length; i++) {
       const arrayNft = await getInfoNft(networkId, nftList[i], accountId)
+      const depositedTokens = deposits[nftList[i]]
       if (!arrayNft) {
+        arrayNft = []
+      }
+      if (depositedTokens && Array.isArray(depositedTokens)) {
+        const contract = new nearAPI.Contract(
+          accountInstance, // the account object that is connecting
+          nftList[i],
+          {
+            // name of contract you're connecting to
+            viewMethods: ['nft_token'], // view methods do not change state but usually return a value
+            accountInstance // account object to initialize and sign transactions.
+          }
+        )
+        for (const d of depositedTokens) {
+          try {
+            const e = await contract.nft_token({ token_id: d })
+            e.deposited = true
+            arrayNft.push(e)
+          } catch (e) {
+            console.error(e.toString())
+          }
+        }
+      }
+      if (arrayNft.length == 0) {
         continue
       }
       const nft = nftList[i]
       const readTokenMetadata = async (e) => {
-
         let price = ''
         if (nftPrices.hasOwnProperty(nftList[i])) {
           price = nftPrices[nftList[i]]
@@ -177,6 +317,7 @@ async function getNFTList(networkId, accountId, contractId = null) {
           owner_id: e.owner_id,
           ownerId: e.owner_id,
           nftIcon: nftMetadataList[nft].icon,
+          deposited: e.deposited ? true : false,
           price
         }
         if (nftMetadataList[nft].base_uri) {
@@ -230,5 +371,7 @@ async function getNFTList(networkId, accountId, contractId = null) {
 
 module.exports = {
   getNFTList,
-  getOwnedNFTMetadata
+  getOwnedNFTMetadata,
+  getMetadataOfNFT,
+  isTokenDepositedBy
 }

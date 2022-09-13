@@ -1,6 +1,8 @@
 const BigNumber = require('bignumber.js')
 const nearAccount = require("./nearAccount")
 const listNFT = require('./utils/listNft')
+const nearAPI = require('near-api-js')
+const axios = require('axios')
 
 async function checkStorageDepositAndMakeTx(account, ammContractId, accountId) {
     let transactions = []
@@ -56,7 +58,7 @@ const SDK = {
         try {
             const account = await nearAccount.getReadOnlyAccount(networkId, contractId)
             const nftMetadata = await account.viewFunction({ contractId: contractId, methodName: 'nft_metadata', args: {} })
-            nftMetadata.tokenId = contractTokenId
+            nftMetadata.tokenId = contractId
             const contract = new nearAPI.Contract(
                 account, // the account object that is connecting
                 contractId,
@@ -68,7 +70,7 @@ const SDK = {
             )
             const e = await contract.nft_token({ token_id: tokenId })
             if (!e) return null
-            // console.log(arrayNft, networkId, contractTokenId, accountId)
+            // console.log(arrayNft, networkId, contractId, accountId)
             const nft = contractId
             let data = {}
             data = {

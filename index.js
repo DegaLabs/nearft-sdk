@@ -15,13 +15,17 @@ async function checkStorageDepositAndMakeTx(account, ammContractId, accountId) {
     } catch (e) {
         // need to register
         let tx = {
+            signerId: accountId,
             receiverId: ammContractId,
             actions: [
                 {
-                    methodName: "storage_deposit",
-                    args: {},
-                    gas: 100000000000000,
-                    deposit: "500000000000000000000000"
+                    type: "FunctionCall",
+                    params: {
+                        methodName: "storage_deposit",
+                        args: {},
+                        gas: 100000000000000,
+                        deposit: "500000000000000000000000"
+                    }
                 }
             ]
         }
@@ -121,7 +125,7 @@ const SDK = {
 
         const buyInfo = await SDK.getBuyInfo({ networkId, contractId: ammContractId, poolId: pool.pool_id, numItems: tokenIds.length, pools })
         let inputValue = buyInfo.input_value
-        inputValue = new BigNumber(inputValue).multipliedBy(100 + Math.floor(slippage * 100)).dividedBy(100).toString()
+        inputValue = new BigNumber(inputValue).multipliedBy(100 + Math.floor(slippage * 100)).dividedBy(100).toFixed(0)
         const wallet = await walletSelector.wallet()
         transactions.push({
             signerId: accountId,
@@ -137,7 +141,8 @@ const SDK = {
                                     pool_id: pool.pool_id,
                                     swap_type: 1,
                                     output_token_ids: tokenIds,
-                                    num_out_nfts: tokenIds.length
+                                    num_out_nfts: tokenIds.length,
+                                    input_token_ids: []
                                 }
                             ]
                         },
@@ -147,7 +152,7 @@ const SDK = {
                 },
             ],
         })
-        return wallet.requestSignTransactions({
+        return wallet.signAndSendTransactions({
             transactions
         })
             .catch((err) => {
@@ -181,14 +186,17 @@ const SDK = {
         let depositActions = []
         for (const tokenId of tokenIdsToDeposit) {
             depositActions.push({
-                methodName: "nft_transfer_call",
-                args: {
-                    receiver_id: ammContractId,
-                    token_id: tokenId,
-                    msg: ''
-                },
-                gas: 50000000000000,
-                deposit: "1"
+                type: "FunctionCall",
+                params: {
+                    methodName: "nft_transfer_call",
+                    args: {
+                        receiver_id: ammContractId,
+                        token_id: tokenId,
+                        msg: ''
+                    },
+                    gas: 50000000000000,
+                    deposit: "1"
+                }
             })
         }
         let depositTransaction = {
@@ -200,7 +208,7 @@ const SDK = {
 
         const sellInfo = await SDK.getSellInfo({ networkId, contractId: ammContractId, poolId: pool.pool_id, numItems: tokenIds.length, pools })
         let outputValue = sellInfo.output_value
-        outputValue = new BigNumber(inputValue).multipliedBy(100 - Math.floor(slippage * 100)).dividedBy(100).toString()
+        outputValue = new BigNumber(inputValue).multipliedBy(100 - Math.floor(slippage * 100)).dividedBy(100).toFixed(0)
         const wallet = await walletSelector.wallet()
         transactions.push({
             signerId: accountId,
@@ -226,7 +234,7 @@ const SDK = {
                 },
             ],
         })
-        return wallet.requestSignTransactions({
+        return wallet.signAndSendTransactions({
             transactions
         })
             .catch((err) => {
@@ -273,11 +281,11 @@ const SDK = {
         return wallet.requestSignTransactions({
             transactions
         })
-          .catch((err) => {
-              console.log("Failed to swap");
+            .catch((err) => {
+                console.log("Failed to swap");
 
-              throw err;
-          })
+                throw err;
+            })
     },
     depositToPool: async (walletSelector, contractId, accountId, poolId, tokenIds, depositAmount) => {
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
@@ -309,11 +317,11 @@ const SDK = {
         return wallet.requestSignTransactions({
             transactions
         })
-          .catch((err) => {
-              console.log("Failed to swap");
+            .catch((err) => {
+                console.log("Failed to swap");
 
-              throw err;
-          })
+                throw err;
+            })
     },
     withdrawNear: async (walletSelector, contractId, accountId, poolId, nearAmount) => {
         const wallet = await walletSelector.wallet()
@@ -345,11 +353,11 @@ const SDK = {
         return wallet.requestSignTransactions({
             transactions
         })
-          .catch((err) => {
-              console.log("Failed to swap");
+            .catch((err) => {
+                console.log("Failed to swap");
 
-              throw err;
-          })
+                throw err;
+            })
     },
     withdrawNfts: async (walletSelector, contractId, accountId, poolId, tokenIds) => {
         const wallet = await walletSelector.wallet()
@@ -381,11 +389,11 @@ const SDK = {
         return wallet.requestSignTransactions({
             transactions
         })
-          .catch((err) => {
-              console.log("Failed to swap");
+            .catch((err) => {
+                console.log("Failed to swap");
 
-              throw err;
-          })
+                throw err;
+            })
     }
 }
 

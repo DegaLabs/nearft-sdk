@@ -87,11 +87,38 @@ const SDK = {
         if (!tokenIds || tokenIds.length == 0) {
             throw "Invalid output token Ids"
         }
+
+        const readAccount = await nearAccount.getReadOnlyAccount(networkId, ammContractId)
+        let transactions = []
+        try {
+            await readAccount.viewFunction({
+                contractId: ammContractId,
+                methodName: "get_deposits",
+                args: {
+                    account_id: accountId,
+                }
+            })
+        } catch (e) {
+            // need to register
+            let tx = {
+                receiverId: ammContractId,
+                actions: [
+                    {
+                        methodName: "storage_deposit",
+                        args: {},
+                        gas: 100000000000000,
+                        deposit: "500000000000000000000000"
+                    }
+                ]
+            }
+            transactions.push(tx)
+        }
+
         const buyInfo = await SDK.getBuyInfo({ networkId, contractId: ammContractId, poolId: pool.pool_id, numItems: tokenIds.length, pools })
         let inputValue = buyInfo.input_value
         inputValue = new BigNumber(inputValue).multipliedBy(100 + Math.floor(slippage * 100)).dividedBy(100).toString()
         const wallet = await walletSelector.wallet()
-        return wallet.signAndSendTransaction({
+        const swapTransaction = {
             signerId: accountId,
             receiverId: ammContractId,
             actions: [
@@ -114,6 +141,10 @@ const SDK = {
                     },
                 },
             ],
+        }
+        transactions.push(swapTransaction)
+        return wallet.requestSignTransactions({
+            transactions
         })
             .catch((err) => {
                 console.log("Failed to swap");
@@ -129,11 +160,67 @@ const SDK = {
         if (!tokenIds || tokenIds.length == 0) {
             throw "Invalid output token Ids"
         }
+
+        // deposit tokenIds if not deposited yet
+        const readAccount = await nearAccount.getReadOnlyAccount(networkId, ammContractId)
+        let deposits = {}
+        let transactions = []
+        try {
+            await readAccount.viewFunction({
+                contractId: ammContractId,
+                methodName: "get_deposits",
+                args: {
+                    account_id: accountId,
+                }
+            })
+        } catch (e) {
+            // need to register
+            let tx = {
+                receiverId: ammContractId,
+                actions: [
+                    {
+                        methodName: "storage_deposit",
+                        args: {},
+                        gas: 100000000000000,
+                        deposit: "500000000000000000000000"
+                    }
+                ]
+            }
+            transactions.push(tx)
+        }
+        deposits = deposits.deposits
+        let depositedTokenIds = deposits[nftContractId]
+        if (!depositedTokenIds) {
+            depositedTokenIds = []
+        }
+
+        let tokenIdsToDeposit = tokenIds.filter(e => !depositedTokenIds.includes(e))
+
+        let depositActions = []
+        for (const tokenId of tokenIdsToDeposit) {
+            depositActions.push({
+                methodName: "nft_transfer_call",
+                args: {
+                    receiver_id: ammContractId,
+                    token_id: tokenId,
+                    msg: ''
+                },
+                gas: 50000000000000,
+                deposit: "1"
+            })
+        }
+        let depositTransaction = {
+            receiverId: nftContractId,
+            actions: depositActions
+        }
+
+        transactions.push(depositTransaction)
+
         const sellInfo = await SDK.getSellInfo({ networkId, contractId: ammContractId, poolId: pool.pool_id, numItems: tokenIds.length, pools })
         let outputValue = sellInfo.output_value
         outputValue = new BigNumber(inputValue).multipliedBy(100 - Math.floor(slippage * 100)).dividedBy(100).toString()
         const wallet = await walletSelector.wallet()
-        return wallet.signAndSendTransaction({
+        let swapTransaction = {
             signerId: accountId,
             receiverId: ammContractId,
             actions: [
@@ -156,6 +243,10 @@ const SDK = {
                     },
                 },
             ],
+        }
+        transactions.push(swapTransaction)
+        return wallet.requestSignTransactions({
+            transactions
         })
             .catch((err) => {
                 console.log("Failed to swap");

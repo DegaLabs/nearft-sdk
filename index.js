@@ -304,7 +304,7 @@ const SDK = {
     createPair: async (walletSelector, networkId, ammContractId, contractId, accountId, poolType, bondingCurve, spotPrice, delta, fee, assetRecipient, initialTokenIds, lookTil, depositAmount) => {
         const wallet = await walletSelector.wallet()
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
-        let { transactions, deposits } = await checkStorageDepositAndMakeTx(readAccount, contractId, accountId)
+        let { transactions, deposits } = await checkStorageDepositAndMakeTx(readAccount, ammContractId, accountId)
 
         deposits = deposits.deposits ? deposits.deposits : {}
         let depositedTokenIds = deposits[contractId]

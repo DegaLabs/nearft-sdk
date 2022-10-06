@@ -458,12 +458,8 @@ const SDK = {
                     params: {
                         methodName: "add_liquidity",
                         args: {
-                            actions: [
-                                {
-                                    pool_id: poolId,
-                                    token_ids: tokenIds,
-                                }
-                            ]
+                            pool_id: poolId,
+                            token_ids: tokenIds,
                         },
                         gas: 300000000000000,
                         deposit: depositAmount,

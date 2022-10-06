@@ -447,7 +447,7 @@ const SDK = {
     addLiquidity: async (walletSelector, networkId, ammContractId, contractId, accountId, poolId, tokenIds, depositAmount) => {
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
 
-        let transactions = checkDepositNft(readAccount, ammContractId, contractId, accountId, tokenIds)
+        let transactions = await checkDepositNft(readAccount, ammContractId, contractId, accountId, tokenIds)
         const wallet = await walletSelector.wallet()
         transactions.push({
             signerId: accountId,

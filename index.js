@@ -36,6 +36,43 @@ async function checkStorageDepositAndMakeTx(account, ammContractId, accountId) {
     }
     return { transactions, deposits }
 }
+
+async function checkDepositNft(readAccount, ammContractId, contractId, accountId, tokenIds) {
+    let { transactions, deposits } = await checkStorageDepositAndMakeTx(readAccount, ammContractId, accountId)
+
+    deposits = deposits.deposits ? deposits.deposits : {}
+    let depositedTokenIds = deposits[contractId]
+    if (!depositedTokenIds) {
+        depositedTokenIds = []
+    }
+
+    let tokenIdsToDeposit = tokenIds.filter(e => !depositedTokenIds.includes(e))
+
+    let depositActions = []
+    for (const tokenId of tokenIdsToDeposit) {
+        depositActions.push({
+            type: "FunctionCall",
+            params: {
+                methodName: "nft_transfer_call",
+                args: {
+                    receiver_id: ammContractId,
+                    token_id: tokenId,
+                    msg: ''
+                },
+                gas: 100000000000000,
+                deposit: "1"
+            }
+        })
+    }
+    let depositTransaction = {
+        receiverId: contractId,
+        actions: depositActions
+    }
+
+    transactions.push(depositTransaction)
+
+    return transactions
+}
 const SDK = {
     getPools: async (networkId, contractId) => {
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
@@ -58,7 +95,7 @@ const SDK = {
     getMetadataOfNFT: listNFT.getMetadataOfNFT,
     getNFTData: listNFT.getNFTList,
     getListMyCollection: async (networkId, ammContractId, accountId) => {
-        const nftList = await listNFT.fetchNftList(networkId, accountId)
+        let nftList = await listNFT.fetchNftList(networkId, accountId)
         if (!nftList) {
             nftList = []
         }
@@ -74,9 +111,9 @@ const SDK = {
                 }
             })
             deposits = deposits.deposits
-            console.log('deposits', deposits)
+            // console.log('deposits', deposits)
             validList = Object.keys(deposits).filter(e => deposits[e].length > 0)
-            console.log('deposits validList', validList)
+            // console.log('deposits validList', validList)
         } catch (e) {
             console.error(e.toString())
         }
@@ -99,8 +136,8 @@ const SDK = {
         for (const n of validList) {
             validTokens[n] = true
         }
-        console.log('validTokens', validTokens)
-        console.log('validList', validList, accountId)
+        // console.log('validTokens', validTokens)
+        // console.log('validList', validList, accountId)
 
         return Object.keys(validTokens)
     },
@@ -311,7 +348,7 @@ const SDK = {
         if (!depositedTokenIds) {
             depositedTokenIds = []
         }
-        console.log('initialTokenIds', initialTokenIds)
+        // console.log('initialTokenIds', initialTokenIds)
         let tokenIdsToDeposit = initialTokenIds.filter(e => !depositedTokenIds.includes(e))
 
         let depositActions = []
@@ -371,7 +408,7 @@ const SDK = {
                 throw err;
             })
     },
-    depositToPool: async (walletSelector, contractId, accountId, poolId, tokenIds, depositAmount) => {
+    depositToPool: async (walletSelector, networkId, contractId, accountId, poolId, tokenIds, depositAmount) => {
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
         let { transactions } = await checkStorageDepositAndMakeTx(readAccount, contractId, accountId)
         const wallet = await walletSelector.wallet()
@@ -407,7 +444,44 @@ const SDK = {
                 throw err;
             })
     },
-    withdrawNear: async (walletSelector, contractId, accountId, poolId, nearAmount) => {
+    addLiquidity: async (walletSelector, networkId, ammContractId, contractId, accountId, poolId, tokenIds, depositAmount) => {
+        const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
+
+        let transactions = checkDepositNft(readAccount, ammContractId, contractId, accountId, tokenIds)
+        const wallet = await walletSelector.wallet()
+        transactions.push({
+            signerId: accountId,
+            receiverId: ammContractId,
+            actions: [
+                {
+                    type: "FunctionCall",
+                    params: {
+                        methodName: "add_liquidity",
+                        args: {
+                            actions: [
+                                {
+                                    pool_id: poolId,
+                                    token_ids: tokenIds,
+                                }
+                            ]
+                        },
+                        gas: 300000000000000,
+                        deposit: depositAmount,
+                    },
+                },
+            ],
+        })
+
+        return wallet.signAndSendTransactions({
+            transactions
+        })
+            .catch((err) => {
+                console.log("Failed to add liquidity");
+
+                throw err;
+            })
+    },
+    withdrawNear: async (walletSelector, networkId, contractId, accountId, poolId, nearAmount) => {
         const wallet = await walletSelector.wallet()
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
         let { transactions } = await checkStorageDepositAndMakeTx(readAccount, contractId, accountId)
@@ -443,7 +517,7 @@ const SDK = {
                 throw err;
             })
     },
-    withdrawNfts: async (walletSelector, contractId, accountId, poolId, tokenIds) => {
+    withdrawNfts: async (walletSelector, networkId, contractId, accountId, poolId, tokenIds) => {
         const wallet = await walletSelector.wallet()
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, contractId)
         let { transactions } = await checkStorageDepositAndMakeTx(readAccount, contractId, accountId)

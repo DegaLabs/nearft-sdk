@@ -490,12 +490,8 @@ const SDK = {
                     params: {
                         methodName: "withdraw_near",
                         args: {
-                            actions: [
-                                {
-                                    pool_id: poolId,
-                                    near_amount: nearAmount,
-                                }
-                            ]
+                            pool_id: poolId,
+                            near_amount: nearAmount,
                         },
                         gas: 300000000000000,
                         deposit: '100000000000000000000000',
@@ -526,12 +522,8 @@ const SDK = {
                     params: {
                         methodName: "withdraw_nfts",
                         args: {
-                            actions: [
-                                {
-                                    pool_id: poolId,
-                                    token_ids: tokenIds,
-                                }
-                            ]
+                            pool_id: poolId,
+                            token_ids: tokenIds,
                         },
                         gas: 300000000000000,
                         deposit: '100000000000000000000000',

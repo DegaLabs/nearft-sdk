@@ -200,7 +200,7 @@ const SDK = {
         return buyInfo
     },
     buyNFT: async (networkId, ammContractId, pools, nftContractId, tokenIds, slippage, walletSelector, accountId) => {
-        const pool = pools.find(e => e.nft_token == nftContractId)
+        const pool = pools.find(e => e.nft_token === nftContractId)
         if (!pool) {
             throw "No NFT to buy"
         }
@@ -243,6 +243,65 @@ const SDK = {
                 },
             ],
         })
+        return wallet.signAndSendTransactions({
+            transactions
+        })
+            .catch((err) => {
+                console.log("Failed to swap");
+
+                throw err;
+            });
+    },
+
+    /*
+     poolIds = [0, 1, 2]
+     nftContracts = [nft1.near, nft2.near, nft3.near]
+     tokenIds = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
+     */
+    buyMultiNFT: async (networkId, ammContractId, poolIds, nftContracts, tokenIds, slippage, walletSelector, accountId) => {
+        if (!Array.isArray(poolIds) || !Array.isArray(nftContracts) || !Array.isArray(tokenIds)) {
+            throw "Invalid params. poolIds, nftContracts, tokenIds need is array"
+        }
+        if (poolIds.length !== nftContracts.length || nftContracts.length !== tokenIds.length) {
+            throw "poolIds, nftContracts, tokenIds need have same length"
+        }
+
+        const readAccount = await nearAccount.getReadOnlyAccount(networkId, ammContractId)
+        let { transactions } = await checkStorageDepositAndMakeTx(readAccount, ammContractId, accountId)
+
+        const wallet = await walletSelector.wallet()
+
+        for (let i = 0; i < poolIds.length; i++) {
+            const buyInfo = await SDK.getBuyInfo(networkId, ammContractId, nftContracts[i], poolIds[i], tokenIds[i].length, {})
+            let inputValue = buyInfo.input_value
+            inputValue = new BigNumber(inputValue).multipliedBy(100 + Math.floor(slippage * 100)).dividedBy(100).toFixed(0)
+            transactions.push({
+                signerId: accountId,
+                receiverId: ammContractId,
+                actions: [
+                    {
+                        type: "FunctionCall",
+                        params: {
+                            methodName: "swap",
+                            args: {
+                                actions: [
+                                    {
+                                        pool_id: poolIds[i],
+                                        swap_type: 1,
+                                        output_token_ids: tokenIds[i],
+                                        num_out_nfts: tokenIds[i].length,
+                                        input_token_ids: []
+                                    }
+                                ]
+                            },
+                            gas: 300000000000000,
+                            deposit: inputValue,
+                        },
+                    },
+                ],
+            })
+        }
+
         return wallet.signAndSendTransactions({
             transactions
         })

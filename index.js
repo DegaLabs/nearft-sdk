@@ -83,6 +83,12 @@ const SDK = {
                 pool_id: poolId,
             }
         })
+        const nftOfPool = await listNFT.getOwnedNFTMetadata(networkId, poolInfo.nft_token, ammContractId)
+        nftMetadata = {}
+        for (const e of nftOfPool) {
+            nftMetadata[e.tokenId] = e
+        }
+        poolInfo.poolTokenMetadata = nftMetadata
 
         return poolInfo
     },

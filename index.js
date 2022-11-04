@@ -74,6 +74,17 @@ async function checkDepositNft(readAccount, ammContractId, contractToken, accoun
     return transactions
 }
 const SDK = {
+    getPoolInfo: async (networkId, ammContractId, poolId) => {
+        const poolInfo = await readAccount.viewFunction({
+            contractId: ammContractId,
+            methodName: "get_pool_info",
+            args: {
+                pool_id: poolId,
+            }
+        })
+
+        return poolInfo
+    },
     getPools: async (networkId, ammContractId) => {
         const readAccount = await nearAccount.getReadOnlyAccount(networkId, ammContractId)
         const ret = await readAccount.viewFunction({

@@ -2,7 +2,7 @@ const BigNumber = require('bignumber.js')
 const nearAccount = require("./nearAccount")
 const listNFT = require('./utils/listNft')
 const nearAPI = require('near-api-js')
-const axios = require('axios').default
+const axios = require('axios')
 
 async function checkStorageDepositAndMakeTx(account, ammContractId, accountId) {
     let transactions = []

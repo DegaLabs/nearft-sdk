@@ -1,5 +1,5 @@
 const nearAccount = require('../nearAccount')
-const axios = require('axios')
+const axios = require('axios').default
 const networkConfig = require('../network')
 const nearAPI = require('near-api-js')
 
